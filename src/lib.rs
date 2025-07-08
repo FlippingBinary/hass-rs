@@ -13,3 +13,5 @@ pub use types::*;
 
 pub mod client;
 pub use client::HassClient;
+
+mod session;

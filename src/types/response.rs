@@ -7,33 +7,70 @@ use serde_json::Value;
 ///The tag identifying which variant we are dealing with is inside of the content,
 /// next to any other fields of the variant.
 #[derive(Debug, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[serde(untagged)]
 pub enum Response {
-    //request to autheticate
-    AuthRequired(AuthRequired),
-    //authetication suceeded
-    #[allow(unused)]
-    AuthOk(AuthOk),
-    //authetication failed
-    AuthInvalid(AuthInvalid),
-    //general response from server
-    Result(WSResult),
-    //response to ping request
-    Pong(WSPong),
-    //received when subscribed to event
+    /// Authentication messages have no id field
+    Auth(AuthResponse),
+    /// A response message
+    OneShot(OneShotResponse),
+    /// An event on a subscription channel
     Event(WSEvent),
-    //when the server close the websocket connection
-    #[allow(unused)]
-    Close(String),
 }
 
 impl Response {
     pub fn id(&self) -> Option<u64> {
         match self {
-            Self::AuthRequired(_) | Self::AuthOk(_) | Self::AuthInvalid(_) | Self::Close(_) => None,
-            Self::Pong(pong) => Some(pong.id),
-            Self::Result(result) => Some(result.id),
-            Self::Event(event) => Some(event.id),
+            Response::Auth(_) => None,
+            Response::OneShot(msg) => Some(msg.id()),
+            Response::Event(event) => Some(event.id),
+        }
+    }
+    pub fn into_auth(self) -> Result<AuthResponse, Self> {
+        match self {
+            Response::Auth(auth) => Ok(auth),
+            other => Err(other),
+        }
+    }
+    pub fn into_oneshot(self) -> Result<OneShotResponse, Self> {
+        match self {
+            Response::OneShot(oneshot) => Ok(oneshot),
+            other => Err(other),
+        }
+    }
+    pub fn into_event(self) -> Result<WSEvent, Self> {
+        match self {
+            Response::Event(event) => Ok(event),
+            other => Err(other),
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum AuthResponse {
+    /// Request to authenticate
+    AuthRequired(AuthRequired),
+    /// Authentication succeeded
+    #[allow(unused)]
+    AuthOk(AuthOk),
+    /// Authentication failed
+    AuthInvalid(AuthInvalid),
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum OneShotResponse {
+    /// General response from server
+    Result(WSResult),
+    /// Response to ping request
+    Pong(WSPong),
+}
+
+impl OneShotResponse {
+    pub fn id(&self) -> u64 {
+        match self {
+            OneShotResponse::Pong(pong) => pong.id,
+            OneShotResponse::Result(result) => result.id,
         }
     }
 }

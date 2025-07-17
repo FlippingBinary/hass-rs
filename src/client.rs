@@ -63,6 +63,14 @@ impl HassClient {
         Ok(())
     }
 
+    pub async fn disconnect(&mut self) -> HassResult<()> {
+        let _ = self.session.take();
+        if let Some(session) = self.session.take() {
+            session.disconnect().await?;
+        }
+        Ok(())
+    }
+
     /// authenticate the session using a long-lived access token
     ///
     /// When a client connects to the server, the server sends out auth_required.

@@ -96,6 +96,10 @@ impl Session {
 
         Ok(this)
     }
+    pub(crate) async fn disconnect(self: &Arc<Self>) -> HassResult<()> {
+        let mut sink = self.sink.lock().await;
+        Ok(sink.close().await?)
+    }
     pub(crate) async fn dispatch_event(self: &Arc<Self>, event: WSEvent) {
         // Dispatch to subscriber
         let id = event.id;
@@ -181,4 +185,3 @@ impl Session {
         self.last_sequence.fetch_add(1, Ordering::Relaxed)
     }
 }
-
